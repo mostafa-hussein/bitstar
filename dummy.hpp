@@ -1,7 +1,7 @@
 //
 // Created by mostafa on 5/2/18.
 //
-
+/*
 #ifndef BITSTAR_DUMMY_HPP
 #define BITSTAR_DUMMY_HPP
 
@@ -82,3 +82,4 @@ std::cout << bg::wkt<point>(point(0, 0)) << std::endl;
 std::cout << "knn query result:" << std::endl;
 BOOST_FOREACH(value const& v, result_n)
 std::cout << bg::wkt<box>(v.first) << " - " << v.second << std::endl;
+*/
