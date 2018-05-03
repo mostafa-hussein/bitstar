@@ -3,4 +3,4 @@ project(bitstar)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(bitstar main.cpp data_structure.hpp)
+add_executable(bitstar main.cpp data_structure.hpp dummy.hpp)
