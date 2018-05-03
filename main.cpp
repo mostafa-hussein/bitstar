@@ -2,6 +2,7 @@
 #include <vector>
 #include <math.h>
 #include "data_structure.hpp"
+#include "dummy.hpp"
 #include<fstream>
 #include<string>
 #include <boost/heap/fibonacci_heap.hpp>
@@ -12,7 +13,10 @@
 #include <boost/geometry/geometries/point.hpp>
 #include <boost/geometry/index/rtree.hpp>
 #include <boost/foreach.hpp>
+#include <boost/math/constants/constants.hpp>
 #define inf DBL_MAX
+#define pi (22.0/7.0)
+#define ex  boost::math::constants::e<double>()
 
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
@@ -23,7 +27,8 @@ typedef bg::model::point<double, 3, bg::cs::cartesian> point;
 
 typedef unsigned long int lint;
 
-int ** Map;
+int ** Map,sizex,sizey;
+double st_x,st_y,st_theta,goal_x,goal_y,goal_theta;
 
 unordered_map<lint , vertex * > V_table;
 
@@ -34,15 +39,19 @@ bgi::rtree< point, bgi::quadratic<16> > V_rtree;
 bgi::rtree< point, bgi::quadratic<16> > X_samples_rtree;
 
 
-void read_data(double & st_x,double & st_y,double & st_theta, int & sizex,int & sizey,double & goal_x,double & goal_y,double & goal_theta,string filename);
+void read_data(string filename);
 
-void bitstar(double & st_x,double & st_y,double & st_theta, int & sizex,int & sizey,double & goal_x,double & goal_y,double & goal_theta);
+void bitstar();
 
 double h_distance (vertex * v1, vertex * v2);
 
 void prune (double c_best);
 
-lint get_id (vertex *,int sizex);
+lint get_id (vertex *);
+
+void sample (vector<vertex *> & X_samples,int m, double c_best,vertex * , vertex* );
+
+void Expand_Vertex(vertex * current);
 
 
 int main(int argc, char *argv[])
@@ -51,9 +60,11 @@ int main(int argc, char *argv[])
     double st_x,st_y,st_theta,goal_x,goal_y,goal_theta;
     int sizex,sizey;
 
-    read_data(st_x,st_y,st_theta,sizex,sizey,goal_x,goal_y,goal_theta,argv[1]);
+    srand (static_cast <unsigned> (time(0))); //time(0)  random seed
 
-    bitstar(st_x,st_y,st_theta,sizex,sizey,goal_x,goal_y,goal_theta);
+    read_data(argv[1]);
+
+    bitstar();
 
     auto finish = std::chrono::high_resolution_clock::now();
 
@@ -62,7 +73,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void read_data(double & st_x,double & st_y,double & st_theta, int & sizex,int & sizey,double & goal_x,double & goal_y,double & goal_theta,string filename)
+void read_data(string filename)
 {
     ifstream data;
     data.open(filename);
@@ -72,8 +83,8 @@ void read_data(double & st_x,double & st_y,double & st_theta, int & sizex,int & 
     int obsno=0;
     int tmp=0;
 
-    data>>sizex;
-    data>>sizey;
+    data>>sizex;  //4
+    data>>sizey;  //3
 
     int m=sizex;
     int n=sizey;
@@ -127,7 +138,7 @@ void read_data(double & st_x,double & st_y,double & st_theta, int & sizex,int & 
 }
 
 
-void bitstar(double & st_x,double & st_y,double & st_theta, int & sizex,int & sizey,double & goal_x,double & goal_y,double & goal_theta)
+void bitstar()
 {
     boost::heap::fibonacci_heap<vertex * , boost::heap::compare<cmp_V>> QV ;
 
@@ -139,9 +150,7 @@ void bitstar(double & st_x,double & st_y,double & st_theta, int & sizex,int & si
     vertex * x_start ,*  x_goal;
 
     bool done =0;
-    double c_best= inf;
-
-
+    double c_best= inf , rewireFactor=1.1;
 
 
 
@@ -169,7 +178,7 @@ void bitstar(double & st_x,double & st_y,double & st_theta, int & sizex,int & si
 
     V_rtree.insert(point(x_start->x,x_start->y,x_start->theta)); // intialize V kdtree
 
-    V_table.insert({get_id(x_start,sizex),x_start});  // intialize V table
+    V_table.insert({get_id(x_start),x_start});  // intialize V table
 
     tree T(x_start);   // intialize V
 
@@ -192,7 +201,34 @@ void bitstar(double & st_x,double & st_y,double & st_theta, int & sizex,int & si
         if (QV.empty() && QE.empty() )
         {
             prune(c_best);
+            sample (X_samples,100,c_best,x_goal,x_start);
+
+            for (int i = 0; i < T.V.size(); ++i)
+            {
+                V_old_table.insert({get_id(T.V[i]),T.V[i]});
+                QV.push(T.V[i]);
+            }
+
+            knn=rewireFactor * log(T.V.size()+X_samples.size()) * (ex + ex/3) ;
         }
+
+        auto QV_it =QV.begin();
+
+        auto QE_it =QE.begin();
+
+        vertex * current;
+
+        do
+        {
+            current = (* QV_it);
+
+            Expand_Vertex(current);
+        }
+        while ( (*QV_it)->gt+(*QV_it)->h <= (*QE_it)->st->gt + (*QE_it)->chat + (*QE_it)->end->h );
+
+
+
+
         done=1;
     }
 
@@ -201,11 +237,6 @@ void bitstar(double & st_x,double & st_y,double & st_theta, int & sizex,int & si
 
 
 
-
-
-
-
-\
 }
 
 
@@ -219,8 +250,7 @@ void prune (double c_best)
 
 }
 
-
-lint get_id (vertex * v,int sizex)
+lint get_id (vertex * v)
 {
     lint key,y,x;
 
@@ -234,10 +264,43 @@ lint get_id (vertex * v,int sizex)
 
 }
 
+void sample (vector<vertex *> & X_samples,int m, double c_best ,vertex * x_goal , vertex * x_start)
+{
+    int count=0;
+    double ran_x,ran_y,ran_theta;
+    vertex * t;
+
+    while (count< m)
+    {
+        ran_x = static_cast <double> (rand()) / (static_cast <double> (RAND_MAX / (sizex-0.0001)));
+        ran_y = static_cast <double> (rand()) / (static_cast <double> (RAND_MAX / (sizey-0.0001)));
+        ran_theta = static_cast <double> (rand()) / (static_cast <double> (RAND_MAX / (2*pi-0.0001)));
+
+        if(Map[(int)ran_x][(int)ran_y]==1)
+            continue;
+
+        count++;
+
+        t= new vertex;
+
+        t->x=ran_x;
+        t->y=ran_y;
+        t->theta=ran_theta;
+        t->h=h_distance(t,x_goal);
+        t->ghat=h_distance(t,x_start);
+        t->gt = inf;
+
+        X_samples.push_back(t);
+        X_samples_rtree.insert(point(t->x,t->y,t->theta));
+    }
+
+}
 
 
+void Expand_Vertex(vertex * current)
+{
 
-
+}
 
 
 

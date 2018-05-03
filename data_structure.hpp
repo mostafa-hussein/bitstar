@@ -37,7 +37,11 @@ struct cmp_V
 {
     bool operator()(const vertex * v1,const  vertex * v2) const
     {
-        return v1->gt > v2->gt;
+        if( v1->gt+v1->h > v2->gt+v2->h)
+            return v1->gt+v1->h > v2->gt+v2->h;
+
+        else if(v1->gt+v1->h == v2->gt+v2->h)
+            return v1->gt > v2->gt;
     }
 };
 
@@ -45,7 +49,14 @@ struct cmp_E
 {
     bool operator()(const edge * e1, const edge * e2) const
     {
-        return e1->chat > e2->chat;
+        if(e1->st->gt + e1->chat + e1->end->h >  e2->st->gt + e2->chat + e2->end->h)
+            return e1->st->gt + e1->chat + e1->end->h >  e2->st->gt + e2->chat + e2->end->h;
+
+        else if (e1->st->gt + e1->chat + e1->end->h ==  e2->st->gt + e2->chat + e2->end->h)
+            return e1->st->gt + e1->chat  >  e2->st->gt + e2->chat ;
+
+        else if (e1->st->gt + e1->chat  ==  e2->st->gt + e2->chat)
+            return  e1->st->gt   >  e2->st->gt ;
     }
 };
 
