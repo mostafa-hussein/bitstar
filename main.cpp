@@ -60,7 +60,7 @@ void bitstar();
 
 double h_distance (vertex * v1, vertex * v2);
 
-void prune (double c_best,vector<vertex *> & X_samples ,bgi::rtree< point, bgi::quadratic<16>> X_samples_rtree,tree & T );
+void prune (double c_best,vector<vertex *> & X_samples ,tree & T );
 
 lint get_id (vertex *);
 
@@ -68,7 +68,7 @@ lint get_id (vertex *,vertex *);
 
 void sample (vector<vertex *> & X_samples,int m, double c_best);
 
-void Expand_Vertex(vertex * current,vector<vertex *>  X_samples, vertex_queue & QV , edge_queue & QE ,int knn,double c_best,tree &  T );
+void Expand_Vertex(vertex * current, vertex_queue & QV , edge_queue & QE ,int knn,double c_best,tree &  T );
 
 bool collision_check_dubin (vertex * v , vertex * x, double & c );
 
@@ -83,7 +83,8 @@ int main(int argc, char *argv[])
 {
     auto start = std::chrono::high_resolution_clock::now();
 
-    srand (static_cast <unsigned> (5)); //time(0)  random seed
+    srand (static_cast <unsigned> (time(0)));
+    cout<<time(0)<<endl;//  random seed
 
     string filename="space-0.sw";
 
@@ -183,11 +184,9 @@ void bitstar()
     vertex_queue QV ;
     edge_queue QE ;
 
-    //edge_queue::handle_type handel;
-
     vector<vertex *> X_samples;
 
-    int knn=0;
+    int knn;
 
     x_start = new vertex;
     x_goal = new vertex;
@@ -216,7 +215,7 @@ void bitstar()
 
     V_rtree.insert(point(x_start->x,x_start->y,x_start->theta)); // intialize V kdtree
 
-    V_table.insert({get_id(x_start),x_start});  // intialize V table
+    V_table.insert({x_start->id,x_start});  // intialize V table
 
     tree T(x_start);   // intialize V
 
@@ -243,20 +242,21 @@ void bitstar()
             //cout<<"edge size =  "<<T.E.size()<<endl;
             //cout<<"sample size =  "<<X_samples.size()<<endl;
 
-            prune(c_best,X_samples,X_samples_rtree,T);
+            prune(c_best,X_samples,T);
 
             //cout<<"Vertex size =  "<<T.V.size()<<endl;
             //cout<<"edge size =  "<<T.E.size()<<endl;
             //cout<<"sample size =  "<<X_samples.size()<<endl;
 
-            sample (X_samples,100,c_best);
+            sample (X_samples,10,c_best);
 
             for (int i = 0; i < T.V.size(); ++i)
             {
-                V_old_table.insert({get_id(T.V[i]),T.V[i]});
+                V_old_table.insert({T.V[i]->id,T.V[i]});
 
                 QV.push_back(T.V[i]);
             }
+
             knn=(int)ceil(rewireFactor * log(T.V.size()+X_samples.size()) * (ex + ex/3.0));
 
             stable_sort(QV.begin(),QV.end(),cmp_V);
@@ -264,15 +264,15 @@ void bitstar()
 
         vertex * current;
 
-
         while (Best_queue_value(QV) <= Best_queue_value(QE) )
         {
             //printf("%e <= %e \n",Best_queue_value(QV) , Best_queue_value(QE));
 
             current = QV[0];
+
             auto old = QE.size();
 
-            Expand_Vertex(current,X_samples ,QV ,QE,knn,c_best,T);
+            Expand_Vertex(current ,QV ,QE,knn,c_best,T);
 
             if(QE.size() > old)
             {
@@ -303,10 +303,12 @@ void bitstar()
             {
                 if(! collision_check_dubin(v,x,e->c))
                     continue;
-                //cout<<"third test"<<v->ghat + e->c <<"<   " <<x->gt <<endl;
+
+                //cout<<"third test"<<(v->gt + e->c +x->h )<<"<  " <<c_best <<endl;
 
                 if(v->gt + e->c +x->h  <c_best)
                 {
+
                     if (( v->gt + e->c ) < x->gt )
                     {
                         unordered_map<lint , vertex * >::iterator it;
@@ -316,27 +318,34 @@ void bitstar()
                         if(it != V_table.end())
                         {
                             //cout<<"delete bad\n";
+                            vector<vector<edge *>::iterator> ite;
                             for (int i = 0; i < T.E.size(); ++i)
                             {
                                 if(x->id == T.E[i]->end->id)
                                 {
-                                    E_table.erase(T.E[i]->id);
-                                    T.E.erase(T.E.begin() + i);
+                                    ite.push_back(T.E.begin()+i);
                                 }
+                            }
+
+                            //cout<<"iterator size = "<<ite.size()<<endl;
+                            for (int j =(int) ite.size()-1; j >=0 ; --j)
+                            {
+                                E_table.erase((*ite[j])->id);
+                                T.E.erase(ite[j]);
                             }
                         }
                         else
                         {
                             //cout<<"push V \n";
-                            x->gt=e->c + v->gt ;
 
                             T.V.push_back(x);
 
-                            V_table.insert({get_id(x),x});
+                            V_table.insert({x->id,x});
 
                             V_rtree.insert(point(x->x,x->y,x->theta));
 
                             QV.push_back(x);
+
                             stable_sort(QV.begin(),QV.end(),cmp_V);
 
                             X_samples_rtree.remove(point(x->x,x->y,x->theta));
@@ -349,9 +358,12 @@ void bitstar()
                                 {
                                     //cout<<"sample erased\n";
                                     X_samples.erase(X_samples.begin() +i);
+                                    break;
                                 }
                             }
                         }
+
+                        x->gt=e->c + v->gt ;
 
                         T.E.push_back(e);
 
@@ -365,8 +377,7 @@ void bitstar()
                             done++;
                         }
 
-
-                        vector <edge_queue::iterator> it1;
+                        /*vector <edge_queue::iterator> it1;
 
                         for (int j = 0; j <QE.size() ; ++j)
                         {
@@ -382,7 +393,7 @@ void bitstar()
                         {
                             QE.erase(it1[k]);
                         }
-                        stable_sort(QE.begin(), QE.end(),cmp_E);
+                        stable_sort(QE.begin(), QE.end(),cmp_E);*/
                     }
                 }
             }
@@ -391,10 +402,9 @@ void bitstar()
         {
             QE.clear();
             QV.clear();
-            done++;
-            cout<<"all are empty \n";
+            //done++;
+            //cout<<"all are empty \n";
         }
-        //done=1;
     }
     printf("count number %d \n",co);
 
@@ -421,39 +431,81 @@ double h_distance (vertex * v1, vertex * v2)
     return sqrt( (v1->x - v2->x) * (v1->x - v2->x) + (v1->y - v2->y) * (v1->y - v2->y)   );
 }
 
-void prune (double c_best,vector<vertex *> & X_samples ,bgi::rtree< point, bgi::quadratic<16>> X_samples_rtree,tree & T )
+void prune (double c_best,vector<vertex *> & X_samples ,tree & T )
 {
-    //cout<<c_best<<endl;
+    vector<vector<vertex *>::iterator> itv;
+    vector<vector<edge *>::iterator> ite;
+
+
     for (int i = 0; i < X_samples.size(); ++i)
     {
         if( h_distance(X_samples[i],x_start) + h_distance(X_samples[i],x_goal) >= c_best )
         {
             //cout<<"erasing sample \n";
+
             X_samples_rtree.remove(point(X_samples[i]->x, X_samples[i]->y, X_samples[i]->theta));
 
-            X_samples.erase(X_samples.begin() + i);
+            itv.push_back(X_samples.begin() + i);
         }
     }
-
-    for (int k = 0; k < T.E.size(); ++k)
+    for (int j = itv.size()-1; j >=0; --j)
     {
-        if(T.E[k]->st->ghat +  T.E[k]->st->h > c_best   || T.E[k]->end->ghat +  T.E[k]->end->h > c_best )
-        {
-            cout<<"somthing need to be erased from edge \n";
-            T.E.erase(T.E.begin() + k );
-        }
+        X_samples.erase(itv[j]);
     }
 
+    itv.clear();
 
-    for (int j = 0; j < T.V.size(); ++j)
+    for (int i = 0; i < T.V.size(); ++i)
     {
-        //cout<<T.V[j]->ghat + T.V[j]->h <<"  "<<T.V[j]->gt<<endl;
-        if ((T.V[j]->ghat + T.V[j]->h) >c_best  || T.V[j]->gt >= inf  )
+        if ((T.V[i]->ghat + T.V[i]->h) > c_best  )
         {
-            cout<<"somthing need to be erased from vertex \n";
-            T.V.erase(T.V.begin()+j);
+            //cout<<"somthing need to be erased from vertex \n";
+
+            V_rtree.remove(point(T.V[i]->x, T.V[i]->y, T.V[i]->theta));
+
+            V_table.erase(T.V[i]->id);
+
+            itv.push_back(T.V.begin()+i);
+        }
+        if (T.V[i]->gt >= inf  )
+        {
+            //cout<<"somthing need to be erased from vertex \n";
+
+            V_rtree.remove(point(T.V[i]->x, T.V[i]->y, T.V[i]->theta));
+
+            V_table.erase(T.V[i]->id);
+
+            X_samples.push_back(T.V[i]);
+
+            X_samples_rtree.insert(point(T.V[i]->x, T.V[i]->y, T.V[i]->theta));
+
+            itv.push_back(T.V.begin()+i);
+
+        }
+
+    }
+
+    for (int j = itv.size()-1; j >=0; --j)
+    {
+        T.V.erase(itv[j]);
+    }
+
+
+    for (int i = 0; i < T.E.size(); ++i)
+    {
+        if(T.E[i]->st->ghat +  T.E[i]->st->h > c_best   || T.E[i]->end->ghat +  T.E[i]->end->h > c_best )
+        {
+            //cout<<"somthing need to be erased from edge \n";
+            E_table.erase(T.E[i]->id);
+            ite.push_back(T.E.begin() + i );
         }
     }
+
+    for (int j = ite.size()-1; j >=0; --j)
+    {
+        T.E.erase(ite[j]);
+    }
+
 }
 
 lint get_id (vertex * v)
@@ -496,7 +548,7 @@ lint get_id (vertex * st  , vertex * end)
 
 void sample (vector<vertex *> & X_samples,int m, double c_best )
 {
-    cout<<"start sampling \n";
+    //cout<<"start sampling \n";
     int count=0;
     double ran_x,ran_y,ran_theta,x1,x2,y1,y2,max_x,max_y,center_x,center_y,c_min;
     vertex * t;
@@ -544,10 +596,6 @@ void sample (vector<vertex *> & X_samples,int m, double c_best )
         t->theta=ran_theta;
         t->id=get_id(t);
 
-        //t->h=h_distance(t,x_goal);
-        //t->ghat=h_distance(t,x_start);
-        //t->gt = (inf +inf);
-
         X_samples.push_back(t);
         X_samples_rtree.insert(point(t->x,t->y,t->theta));
 
@@ -557,7 +605,7 @@ void sample (vector<vertex *> & X_samples,int m, double c_best )
 }
 
 
-void Expand_Vertex(vertex * v,vector<vertex *>  X_samples, vertex_queue & QV , edge_queue & QE , int knn ,double c_best,tree & T)
+void Expand_Vertex(vertex * v , vertex_queue & QV , edge_queue & QE , int knn ,double c_best,tree & T)
 {
     QV.erase(QV.begin());
 
@@ -601,11 +649,13 @@ void Expand_Vertex(vertex * v,vector<vertex *>  X_samples, vertex_queue & QV , e
         }
     }
 
-    it_v_old=V_old_table.find(get_id(v));
+    it_v_old=V_old_table.find(v->id);
 
     if(it_v_old == V_old_table.end())  // not in the v_old_table
     {
+
         V_rtree.query(bgi::nearest(point(v->x,v->y,v->theta), knn), std::back_inserter(V_near));
+
         //printf("V_near size = %d \n",V_near.size());
 
         for (int i = 0; i < V_near.size(); ++i)
@@ -618,7 +668,6 @@ void Expand_Vertex(vertex * v,vector<vertex *>  X_samples, vertex_queue & QV , e
             w->ghat=h_distance(w,x_start);
             w->h=h_distance(w,x_goal);
             w->id=get_id(w);
-
 
             for (int j = 0; j < T.V.size(); ++j)
             {
@@ -695,14 +744,14 @@ bool collision_check_dubin (vertex * v , vertex * x, double & c )
         if ((int) m > sizex -.0001 || m < 0 || (int) n > sizey -.0001 || n < 0)
         {
             c=(inf +inf);
-            cout<<"\n \\\\\\\\\\\\\\\\\\\\\\\\\\t  first \\\\\\\\\\\\\\\\\\\\\\\\\\\\ \n";
+            //cout<<"\n \\\\\\\\\\\\\\\\\\\\\\\\\\t  first \\\\\\\\\\\\\\\\\\\\\\\\\\\\ \n";
             return false;
         }
 
         if (Map[int(m)][int(n)] == 1)
         {
             c=(inf +inf);
-            cout<<"\n \\\\\\\\\\\\\\\\\\\\\\\\\\t  second \\\\\\\\\\\\\\\\\\\\\\\\\\\\ \n";
+            //cout<<"\n \\\\\\\\\\\\\\\\\\\\\\\\\\t  second \\\\\\\\\\\\\\\\\\\\\\\\\\\\ \n";
             return false;
         }
     }
@@ -713,9 +762,8 @@ bool collision_check_dubin (vertex * v , vertex * x, double & c )
 double Best_queue_value (vertex_queue & QV)
 {
     if(QV.empty())
-    {
         return inf;
-    }
+
     auto top = QV[0];
     return top->gt + top->h;
 
