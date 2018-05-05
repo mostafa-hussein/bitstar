@@ -15,8 +15,30 @@
 #include <boost/math/constants/constants.hpp>
 #include "dubins.h"
 #include "dubins.cpp"
+#include <algorithm>
 //#define debug
 
+bool cmp_V( vertex * v1,  vertex * v2)
+{
+    if( v1->gt+v1->h >= v2->gt+v2->h)
+        return v1->gt+v1->h >= v2->gt+v2->h;
+
+    else if(v1->gt+v1->h == v2->gt+v2->h)
+        return v1->gt >= v2->gt;
+}
+
+bool cmp_E( edge * e1,  edge * e2)
+{
+    //cout<<e1->st->gt + e1->chat + e1->end->h <<"  "<<  e2->st->gt + e2->chat + e2->end->h<<endl;
+    if((e1->st->gt + e1->chat + e1->end->h) >=  (e2->st->gt + e2->chat + e2->end->h))
+        return e1->st->gt + e1->chat + e1->end->h >=  e2->st->gt + e2->chat + e2->end->h;
+
+    else if (e1->st->gt + e1->chat + e1->end->h ==  e2->st->gt + e2->chat + e2->end->h)
+        return e1->st->gt + e1->chat  >=  e2->st->gt + e2->chat ;
+
+    else if (e1->st->gt + e1->chat  ==  e2->st->gt + e2->chat)
+        return  e1->st->gt   >=  e2->st->gt ;
+}
 
 #define inf  DBL_MAX
 #define pi (22.0/7.0)
@@ -28,8 +50,12 @@ using namespace std ;
 
 
 typedef bg::model::point<double, 3, bg::cs::cartesian> point;
-typedef boost::heap::fibonacci_heap<edge * , boost::heap::compare<cmp_E>> edge_queue;
-typedef  boost::heap::fibonacci_heap<vertex * , boost::heap::compare<cmp_V>> vertex_queue;
+
+//typedef boost::heap::fibonacci_heap<edge * , boost::heap::compare<cmp_E>> edge_queue;
+//typedef  boost::heap::fibonacci_heap<vertex * , boost::heap::compare<cmp_V>> vertex_queue;
+
+typedef vector<edge *> edge_queue;
+typedef vector<vertex *> vertex_queue;
 
 typedef unsigned long int lint;
 
@@ -182,7 +208,7 @@ void bitstar()
     vertex_queue QV ;
     edge_queue QE ;
 
-    edge_queue::handle_type handel;
+    //edge_queue::handle_type handel;
 
     vector<vertex *> X_samples;
 
@@ -233,7 +259,7 @@ void bitstar()
 ///********************************* done initialization ********************************************************\\\
 ///
     int co=0;
-    while (done <20 )
+    while (done <2)
     {
         co++;
         if ( QV.empty() && QE.empty() )
@@ -254,21 +280,29 @@ void bitstar()
             {
                 V_old_table.insert({get_id(T.V[i]),T.V[i]});
 
-                QV.push(T.V[i]);
+                QV.push_back(T.V[i]);
             }
             knn=(int)ceil(rewireFactor * log(T.V.size()+X_samples.size()) * (ex + ex/3.0));
-            //cout<<"knn = "<<knn <<endl;
+
+            stable_sort(QV.begin(),QV.end(),cmp_V);
         }
 
         vertex * current;
+
 
         while (Best_queue_value(QV) <= Best_queue_value(QE) )
         {
             //printf("%e <= %e \n",Best_queue_value(QV) , Best_queue_value(QE));
 
-            current = QV.top();
+            current = QV[0];
+            auto old = QE.size();
 
             Expand_Vertex(current,X_samples ,QV ,QE,knn,c_best,T);
+
+            if(QE.size() > old)
+            {
+                stable_sort(QE.begin(), QE.end(),cmp_E);
+            }
         }
 
         //cout<<"done looping \n";
@@ -277,9 +311,9 @@ void bitstar()
 
         vertex * v, *x ;
 
-        e= QE.top();
+        e= QE[0];
 
-        QE.pop();
+        QE.erase(QE.begin());
 
         v=e->st;
         x=e->end;
@@ -327,7 +361,8 @@ void bitstar()
 
                             V_rtree.insert(point(x->x,x->y,x->theta));
 
-                            QV.push(x);
+                            QV.push_back(x);
+                            stable_sort(QV.begin(),QV.end(),cmp_V);
 
                             X_samples_rtree.remove(point(x->x,x->y,x->theta));
 
@@ -354,19 +389,25 @@ void bitstar()
                             cout<<"I am done with best solution cost = "<<c_best<<endl;
                             done++;
                         }
-                        /*for (auto it_QE=QE.begin(), end=QE.end(); it_QE !=end ; it_QE++)
+
+
+                        /*vector <edge_queue::iterator> it1;
+
+                        for (int j = 0; j <QE.size() ; ++j)
                         {
-                            if((*it_QE)->end->id == x->id)
+                            if(QE[j]->end->id == x->id)
                             {
-                                if(((*it_QE)->st->gt + (*it_QE)->chat ) >= x->gt)
+                                if((QE[j]->st->gt + QE[j]->chat ) >= x->gt)
                                 {
-                                    handel= QE.s_handle_from_iterator(it_QE);
-                                    QE.erase(handel);
-                                    it_QE=QE.begin();
-                                    end=QE.end();
+                                    it1.push_back(QE.begin()+j);
                                 }
                             }
-                        }*/
+                        }
+                        for (int k = it1.size()-1; k >=0; --k)
+                        {
+                            QE.erase(it1[k]);
+                        }
+                        stable_sort(QE.begin(), QE.end(),cmp_E);*/
                     }
                 }
             }
@@ -544,7 +585,7 @@ void sample (vector<vertex *> & X_samples,int m, double c_best )
 
 void Expand_Vertex(vertex * v,vector<vertex *>  X_samples, vertex_queue & QV , edge_queue & QE , int knn ,double c_best,tree & T)
 {
-    QV.pop();
+    QV.erase(QV.begin());
 
     edge * e;
     vertex * x , *w;
@@ -575,13 +616,14 @@ void Expand_Vertex(vertex * v,vector<vertex *>  X_samples, vertex_queue & QV , e
 
         if ( (v->ghat + h_distance(v,x) + x->h) < c_best )
         {
+            //cout<<"pushing new edge";
             e= new edge;
             e->st=v;
             e->end=x;
             e->chat = h_distance(v,x);
             e->id=get_id(v,x);
 
-            QE.push (e);
+            QE.push_back (e);
         }
     }
 
@@ -619,20 +661,19 @@ void Expand_Vertex(vertex * v,vector<vertex *>  X_samples, vertex_queue & QV , e
 
             if (it_e == E_table.end() && ((v->ghat + h_distance(v,w) + w->h) < c_best ) && ( v->gt + h_distance(v,w) ) < w->gt  )
             {
-                //cout<<"pushing new edge";
+                //cout<<"pushing new edge down";
                 e= new edge;
                 e->st=v;
                 e->end=w;
                 e->chat = h_distance(v,w);
                 e->id =get_id(v,w);
 
-                QE.push (e);
+                QE.push_back (e);
 
             }
         }
 
     }
-
 }
 
 
@@ -716,7 +757,7 @@ double Best_queue_value (vertex_queue & QV)
     {
         return inf;
     }
-    auto top = QV.top();
+    auto top = QV[0];
     return top->gt + top->h;
 
 }
@@ -727,7 +768,7 @@ double Best_queue_value (edge_queue & QE)
     if(QE.empty())
         return inf;
 
-    auto top = QE.top();
+    auto top = QE[0];
 
     return top->st->gt +top->chat + top->end->h;
 }
