@@ -1,9 +1,8 @@
 #include <iostream>
 #include <vector>
-#include <math.h>
+#include <cmath>
 #include "data_structure.hpp"
 #include<fstream>
-#include<string>
 #include <boost/heap/fibonacci_heap.hpp>
 #include <cfloat>
 #include <chrono>
@@ -18,27 +17,6 @@
 #include <algorithm>
 //#define debug
 
-bool cmp_V( vertex * v1,  vertex * v2)
-{
-    if( v1->gt+v1->h >= v2->gt+v2->h)
-        return v1->gt+v1->h >= v2->gt+v2->h;
-
-    else if(v1->gt+v1->h == v2->gt+v2->h)
-        return v1->gt >= v2->gt;
-}
-
-bool cmp_E( edge * e1,  edge * e2)
-{
-    //cout<<e1->st->gt + e1->chat + e1->end->h <<"  "<<  e2->st->gt + e2->chat + e2->end->h<<endl;
-    if((e1->st->gt + e1->chat + e1->end->h) >=  (e2->st->gt + e2->chat + e2->end->h))
-        return e1->st->gt + e1->chat + e1->end->h >=  e2->st->gt + e2->chat + e2->end->h;
-
-    else if (e1->st->gt + e1->chat + e1->end->h ==  e2->st->gt + e2->chat + e2->end->h)
-        return e1->st->gt + e1->chat  >=  e2->st->gt + e2->chat ;
-
-    else if (e1->st->gt + e1->chat  ==  e2->st->gt + e2->chat)
-        return  e1->st->gt   >=  e2->st->gt ;
-}
 
 #define inf  DBL_MAX
 #define pi (22.0/7.0)
@@ -104,8 +82,6 @@ double Best_queue_value (edge_queue & QE);
 int main(int argc, char *argv[])
 {
     auto start = std::chrono::high_resolution_clock::now();
-    double st_x,st_y,st_theta,goal_x,goal_y,goal_theta;
-    int sizex,sizey;
 
     srand (static_cast <unsigned> (5)); //time(0)  random seed
 
@@ -113,7 +89,6 @@ int main(int argc, char *argv[])
 
     if(argc >1)
         filename = argv[1];
-
 
     read_data(filename);
 
@@ -391,7 +366,7 @@ void bitstar()
                         }
 
 
-                        /*vector <edge_queue::iterator> it1;
+                        vector <edge_queue::iterator> it1;
 
                         for (int j = 0; j <QE.size() ; ++j)
                         {
@@ -407,7 +382,7 @@ void bitstar()
                         {
                             QE.erase(it1[k]);
                         }
-                        stable_sort(QE.begin(), QE.end(),cmp_E);*/
+                        stable_sort(QE.begin(), QE.end(),cmp_E);
                     }
                 }
             }
@@ -467,7 +442,6 @@ void prune (double c_best,vector<vertex *> & X_samples ,bgi::rtree< point, bgi::
             cout<<"somthing need to be erased from edge \n";
             T.E.erase(T.E.begin() + k );
         }
-
     }
 
 
@@ -682,7 +656,6 @@ int printConfiguration(double q[3], double x, void* user_data)
     double * tmp;
 
     tmp =new double[4];
-    // printf("%f,%f,%f,%f\n", q[0], q[1], q[2], x);
     tmp[0]=q[0];
     tmp[1]=q[1];
     tmp[2]=q[2];
@@ -698,8 +671,6 @@ bool collision_check_dubin (vertex * v , vertex * x, double & c )
 
     res.clear();
     DubinsPath path;
-    double theta ;
-    double cost=0;
 
     double q0[3],q1[3],m,n;
 
@@ -715,39 +686,27 @@ bool collision_check_dubin (vertex * v , vertex * x, double & c )
 
     dubins_path_sample_many(&path,  0.01, printConfiguration, NULL);
 
-
     for (int i = 0; i < res.size(); ++i)
     {
-        //printf("%f,%f,%f,%f\n", res[i][0], res[i][1], res[i][2], res[i][3]);
 
         m=res[i][0];
         n=res[i][1];
 
-
-
-        if ((int) m > sizex -1 || m < 0 || (int) n > sizey -1 || n < 0)
+        if ((int) m > sizex -.0001 || m < 0 || (int) n > sizey -.0001 || n < 0)
         {
             c=(inf +inf);
-            //cout<<"\n \\\\\\\\\\\\\\\\\\\\\\\\\\\t  first \\\\\\\\\\\\\\\\\\\\\\\\\\\\ \n";
+            cout<<"\n \\\\\\\\\\\\\\\\\\\\\\\\\\t  first \\\\\\\\\\\\\\\\\\\\\\\\\\\\ \n";
             return false;
         }
 
         if (Map[int(m)][int(n)] == 1)
         {
             c=(inf +inf);
-            //cout<<"\n \\\\\\\\\\\\\\\\\\\\\\\\\\t second  \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ \n";
+            cout<<"\n \\\\\\\\\\\\\\\\\\\\\\\\\\t  second \\\\\\\\\\\\\\\\\\\\\\\\\\\\ \n";
             return false;
         }
     }
-
-
-    /*for (int i = 0; i < res.size()-1; ++i)
-    {
-        cost += sqrt( (res[i][0]-res[i+1][0])*(res[i][0]-res[i+1][0])  + (res[i][1]-res[i+1][1]) *(res[i][1]-res[i+1][1]));
-    }*/
-
     c=dubins_path_length (&path);
-
     return true;
 }
 
