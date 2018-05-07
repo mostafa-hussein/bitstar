@@ -18,7 +18,7 @@
 //#define debug
 
 
-#define inf  DBL_MAX
+#define inf  (DBL_MAX*DBL_MAX)
 #define pi (22.0/7.0)
 #define ex  boost::math::constants::e<double>()
 
@@ -78,13 +78,11 @@ double Best_queue_value (vertex_queue & QV);
 
 double Best_queue_value (edge_queue & QE);
 
+void get_path (vector<edge *> E);
 
 int main(int argc, char *argv[])
 {
     auto start = std::chrono::high_resolution_clock::now();
-
-    srand (static_cast <unsigned> (time(0)));
-    cout<<time(0)<<endl;//  random seed
 
     string filename="space-0.sw";
 
@@ -97,7 +95,7 @@ int main(int argc, char *argv[])
 
     auto finish = std::chrono::high_resolution_clock::now();
 
-    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(finish-start).count()/1000000 << "ms\n";
+    //cout << std::chrono::duration_cast<std::chrono::nanoseconds>(finish-start).count()/1000000 << "ms\n";
 
     return 0;
 }
@@ -186,13 +184,16 @@ void bitstar()
 
     vector<vertex *> X_samples;
 
-    int knn;
+    int knn, no_sample_times=0;
 
     x_start = new vertex;
     x_goal = new vertex;
 
     int done =0;
-    double c_best= (inf +inf) , rewireFactor=1.1;
+    double c_best= (inf) , rewireFactor=1.1;
+
+    srand (static_cast <unsigned> (time(0)));
+    //cout<<time(0)<<endl;//  random seed
 
     ///********************************* start initialization ********************************************************\\\
 
@@ -208,7 +209,7 @@ void bitstar()
     x_goal->y=goal_y;
     x_goal->theta=goal_theta;
     x_goal->ghat=h_distance(x_goal,x_start);
-    x_goal->gt=(inf +inf);
+    x_goal->gt=(inf);
     x_goal->h=0;
     x_goal->id=get_id(x_goal);
 
@@ -225,7 +226,7 @@ void bitstar()
 
     X_samples_rtree.insert(point(x_goal->x,x_goal->y,x_goal->theta));   //  intialize x_samples kdtree
 
-    knn=int((inf +inf));
+    knn=int((inf));
 
     QV.clear();
     QE.clear();
@@ -233,7 +234,7 @@ void bitstar()
 ///********************************* done initialization ********************************************************\\\
 ///
     int co=0;
-    while (done <2)
+    while (done <1)
     {
         co++;
         if ( QV.empty() && QE.empty() )
@@ -242,13 +243,15 @@ void bitstar()
             //cout<<"edge size =  "<<T.E.size()<<endl;
             //cout<<"sample size =  "<<X_samples.size()<<endl;
 
-            prune(c_best,X_samples,T);
+            if(done >0)
+                prune(c_best,X_samples,T);
 
             //cout<<"Vertex size =  "<<T.V.size()<<endl;
             //cout<<"edge size =  "<<T.E.size()<<endl;
             //cout<<"sample size =  "<<X_samples.size()<<endl;
 
             sample (X_samples,10,c_best);
+            no_sample_times ++;
 
             for (int i = 0; i < T.V.size(); ++i)
             {
@@ -317,21 +320,15 @@ void bitstar()
 
                         if(it != V_table.end())
                         {
-                            //cout<<"delete bad\n";
-                            vector<vector<edge *>::iterator> ite;
+                            if(it->second->x != x->x || it->second->y != x->y || it->second->theta != x->theta)
+                                cout<<"delete bad\n";
+
                             for (int i = 0; i < T.E.size(); ++i)
                             {
                                 if(x->id == T.E[i]->end->id)
                                 {
-                                    ite.push_back(T.E.begin()+i);
+                                    T.E.erase(T.E.begin()+i);
                                 }
-                            }
-
-                            //cout<<"iterator size = "<<ite.size()<<endl;
-                            for (int j =(int) ite.size()-1; j >=0 ; --j)
-                            {
-                                E_table.erase((*ite[j])->id);
-                                T.E.erase(ite[j]);
                             }
                         }
                         else
@@ -375,9 +372,11 @@ void bitstar()
                             x_goal->gt=c_best;
                             cout<<"I am done with best solution cost = "<<c_best<<endl;
                             done++;
+                            if(c_best==2)
+                                done++;
                         }
 
-                        /*vector <edge_queue::iterator> it1;
+                        vector <edge_queue::iterator> it1;
 
                         for (int j = 0; j <QE.size() ; ++j)
                         {
@@ -393,7 +392,7 @@ void bitstar()
                         {
                             QE.erase(it1[k]);
                         }
-                        stable_sort(QE.begin(), QE.end(),cmp_E);*/
+                        stable_sort(QE.begin(), QE.end(),cmp_E);
                     }
                 }
             }
@@ -406,6 +405,9 @@ void bitstar()
             //cout<<"all are empty \n";
         }
     }
+
+    printf("no_sample_times = %d \n",no_sample_times);
+
     printf("count number %d \n",co);
 
     printf("Vertex tree count %d \n",(int)T.V.size());
@@ -416,13 +418,56 @@ void bitstar()
     for (int i = 0; i < T.V.size(); ++i)
     {
         printf("%f %f\n",T.V[i]->x , T.V[i]->y);
-    }
+    }*/
+
+    vector<edge *>sol;
+    edge * current=T.E[T.E.size()-1];
+    sol.push_back(current);
+
     printf("%d \n",(int)T.E.size());
     for (int i = 0; i < T.E.size(); ++i)
     {
         printf("%f %f",T.E[i]->st->x , T.E[i]->st->y);
         printf(" %f %f\n",T.E[i]->end->x , T.E[i]->end->y);
+    }
+
+    bool finish =0;
+    while (! finish)
+    {
+        for (int i = (int)T.E.size() - 1; i >= 0; --i)
+        {
+            if (current->st->id == T.E[i]->end->id)
+            {
+                sol.push_back(T.E[i]);
+                current = T.E[i];
+            }
+            if (get_id(current->st) == x_start->id)
+            {
+                finish=1;
+                break;
+            }
+        }
+    }
+
+    printf("%d \n",(int)sol.size()+1);
+
+    printf("%f %f\n",sol[sol.size() -1]->st->x , sol[sol.size() -1]->st->y);
+
+    for (int i = sol.size() -2 ; i >= 0; --i)
+    {
+        printf("%f %f\n",sol[i]->st->x , sol[i]->st->y);
+    }
+    printf("%f %f\n",sol[0]->end->x , sol[0]->end->y);
+
+    /*printf("%d \n",0);//(int)T.E.size()
+    for (int i = 0; i < T.E.size(); ++i)
+    {
+        printf("%f %f",T.E[i]->st->x , T.E[i]->st->y);
+        printf(" %f %f\n",T.E[i]->end->x , T.E[i]->end->y);
     }*/
+
+    //get_path(sol);
+
 }
 
 
@@ -434,7 +479,7 @@ double h_distance (vertex * v1, vertex * v2)
 void prune (double c_best,vector<vertex *> & X_samples ,tree & T )
 {
     vector<vector<vertex *>::iterator> itv;
-    vector<vector<edge *>::iterator> ite;
+    vector<vector<edge *>::iterator> ite, ite1;
 
 
     for (int i = 0; i < X_samples.size(); ++i)
@@ -457,7 +502,7 @@ void prune (double c_best,vector<vertex *> & X_samples ,tree & T )
 
     for (int i = 0; i < T.V.size(); ++i)
     {
-        if ((T.V[i]->ghat + T.V[i]->h) > c_best  )
+        if ((T.V[i]->ghat + T.V[i]->h) > c_best || T.V[i]->gt + T.V[i]->h  > c_best )
         {
             //cout<<"somthing need to be erased from vertex \n";
 
@@ -467,42 +512,47 @@ void prune (double c_best,vector<vertex *> & X_samples ,tree & T )
 
             itv.push_back(T.V.begin()+i);
         }
-        if (T.V[i]->gt >= inf  )
-        {
-            //cout<<"somthing need to be erased from vertex \n";
-
-            V_rtree.remove(point(T.V[i]->x, T.V[i]->y, T.V[i]->theta));
-
-            V_table.erase(T.V[i]->id);
-
-            X_samples.push_back(T.V[i]);
-
-            X_samples_rtree.insert(point(T.V[i]->x, T.V[i]->y, T.V[i]->theta));
-
-            itv.push_back(T.V.begin()+i);
-
-        }
-
     }
+
+    for (int i = 0; i < itv.size(); ++i)
+    {
+        for (int j = 0; j < T.E.size(); ++j)
+        {
+            if((*itv[i])->id == T.E[j]->end->id)
+            {
+                ite.push_back(T.E.begin()+j);
+            }
+        }
+    }
+
 
     for (int j = itv.size()-1; j >=0; --j)
     {
         T.V.erase(itv[j]);
     }
 
+    auto sz=ite.size();
 
-    for (int i = 0; i < T.E.size(); ++i)
+    for (int k = 0; k <sz ; ++k)
     {
-        if(T.E[i]->st->ghat +  T.E[i]->st->h > c_best   || T.E[i]->end->ghat +  T.E[i]->end->h > c_best )
+        for (int i = 0; i < T.E.size(); ++i)
         {
-            //cout<<"somthing need to be erased from edge \n";
-            E_table.erase(T.E[i]->id);
-            ite.push_back(T.E.begin() + i );
+            if ((*ite[k])->st->id == T.E[i]->st->id && (*ite[k])->id != T.E[i]->id )
+            {
+                ite.push_back(T.E.begin() + i);
+            }
         }
     }
 
+    sort(ite.begin(),ite.end());
+
     for (int j = ite.size()-1; j >=0; --j)
     {
+        if(j>0)
+            if((*ite[j]) == (*ite[j-1]))
+                continue;
+
+        E_table.erase((*ite[j])->id);
         T.E.erase(ite[j]);
     }
 
@@ -632,7 +682,7 @@ void Expand_Vertex(vertex * v , vertex_queue & QV , edge_queue & QE , int knn ,d
         x->y=X_near[i].get<1>();
         x->theta=X_near[i].get<2>();
         x->h =h_distance(x,x_goal);
-        x->gt =(inf +inf);
+        x->gt =(inf);
         x->ghat=h_distance(x,x_start);
         x->id=get_id(x);
 
@@ -743,14 +793,14 @@ bool collision_check_dubin (vertex * v , vertex * x, double & c )
 
         if ((int) m > sizex -.0001 || m < 0 || (int) n > sizey -.0001 || n < 0)
         {
-            c=(inf +inf);
+            c=(inf);
             //cout<<"\n \\\\\\\\\\\\\\\\\\\\\\\\\\t  first \\\\\\\\\\\\\\\\\\\\\\\\\\\\ \n";
             return false;
         }
 
         if (Map[int(m)][int(n)] == 1)
         {
-            c=(inf +inf);
+            c=(inf);
             //cout<<"\n \\\\\\\\\\\\\\\\\\\\\\\\\\t  second \\\\\\\\\\\\\\\\\\\\\\\\\\\\ \n";
             return false;
         }
@@ -781,7 +831,35 @@ double Best_queue_value (edge_queue & QE)
 }
 
 
+void get_path (vector<edge *> E)
+{
+    DubinsPath path;
+    int count=0;
 
+    double q0[3], q1[3];
+    for (int i = 0; i < E.size(); ++i)
+    {
+        res.clear();
+
+        q0[0] = E[i]->st->x;
+        q0[1] = E[i]->st->y;
+        q0[2] = E[i]->st->theta;
+
+        q1[0] = E[i]->end->x;
+        q1[1] = E[i]->end->y;
+        q1[2] = E[i]->end->theta;
+
+        dubins_shortest_path(&path, q0, q1, .1);
+
+        dubins_path_sample_many(&path, 0.01, printConfiguration, NULL);
+
+        for (int j = 0; j < res.size(); ++j)
+        {
+            printf("%f %f \n", res[j][0], res[j][1]);
+        }
+        count+= res.size();
+    }
+}
 
 
 
