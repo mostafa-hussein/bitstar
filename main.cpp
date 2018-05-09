@@ -6,6 +6,9 @@
 #include <boost/heap/fibonacci_heap.hpp>
 #include <cfloat>
 #include <chrono>
+#include <cstdlib>
+#include <cstring>
+#include <string>
 #include <unordered_map>
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point.hpp>
@@ -15,7 +18,7 @@
 #include "dubins.h"
 #include "dubins.cpp"
 #include <algorithm>
-//#define debug
+#define debug
 
 
 #define inf  (DBL_MAX*DBL_MAX)
@@ -41,6 +44,7 @@ int ** Map,sizex,sizey;
 double st_x,st_y,st_theta,goal_x,goal_y,goal_theta;
 vertex * x_start ,*  x_goal;
 vector<double*> res;
+int n=1;
 
 
 unordered_map<lint , edge * > E_table;
@@ -78,24 +82,25 @@ double Best_queue_value (vertex_queue & QV);
 
 double Best_queue_value (edge_queue & QE);
 
-void get_path (vector<edge *> E);
+void get_path (vector<vertex *> v);
 
 int main(int argc, char *argv[])
 {
-    auto start = std::chrono::high_resolution_clock::now();
 
-    string filename="space-0.sw";
+    string filename="map.sw";
 
     if(argc >1)
+    {
         filename = argv[1];
+        n=stoi(argv[1]);
+    }
+
 
     read_data(filename);
 
+    //cout<<"done reading \n";
+
     bitstar();
-
-    auto finish = std::chrono::high_resolution_clock::now();
-
-    //cout << std::chrono::duration_cast<std::chrono::nanoseconds>(finish-start).count()/1000000 << "ms\n";
 
     return 0;
 }
@@ -106,9 +111,7 @@ void read_data(string filename)
     data.open(filename);
 
     char dummy;
-    int obs [100][2];
     int obsno=0;
-    int tmp=0;
 
     #ifdef debug
         cin>>sizex;  //4
@@ -143,19 +146,28 @@ void read_data(string filename)
                 data>>dummy;
             #endif
 
-
-
             if(dummy=='#')
             {
                 Map[j][sizey - 1 - i]=1;
-                obs[obsno][0]=j;
-                obs[obsno][1]=sizey - 1 - i;
                 obsno++;
             }
+            /*else if(dummy=='S')
+            {
+                st_x=j;
+                st_y=sizey - 1 - i;
+            }
+            else if(dummy=='F')
+            {
+                goal_x=j;
+                goal_y=sizey - 1 - i;
+            }*/
         }
     }
     #ifdef debug
-        cin>>st_x>>st_y;st_theta=0;cin>>goal_x>>goal_y; goal_theta=0;
+        cin>>st_x>>st_y;
+        cin>>goal_x>>goal_y;
+        goal_theta=0;
+        st_theta=0;
     #else
         data>>st_x>>st_y;st_theta=0;data>>goal_x>>goal_y; goal_theta=0;
     #endif
@@ -179,6 +191,10 @@ void read_data(string filename)
 
 void bitstar()
 {
+    auto start = std::chrono::high_resolution_clock::now();
+    //cout<<st_x <<" "<<st_y<<endl;
+    //cout<<goal_x <<" "<<goal_y<<endl;
+
     vertex_queue QV ;
     edge_queue QE ;
 
@@ -233,8 +249,9 @@ void bitstar()
 
 ///********************************* done initialization ********************************************************\\\
 ///
+
     int co=0;
-    while (done <1)
+    while (done <n)
     {
         co++;
         if ( QV.empty() && QE.empty() )
@@ -250,7 +267,7 @@ void bitstar()
             //cout<<"edge size =  "<<T.E.size()<<endl;
             //cout<<"sample size =  "<<X_samples.size()<<endl;
 
-            sample (X_samples,10,c_best);
+            sample (X_samples,100,c_best);
             no_sample_times ++;
 
             for (int i = 0; i < T.V.size(); ++i)
@@ -264,6 +281,7 @@ void bitstar()
 
             stable_sort(QV.begin(),QV.end(),cmp_V);
         }
+        //cout<<"start calculating \n";
 
         vertex * current;
 
@@ -320,8 +338,6 @@ void bitstar()
 
                         if(it != V_table.end())
                         {
-                            if(it->second->x != x->x || it->second->y != x->y || it->second->theta != x->theta)
-                                cout<<"delete bad\n";
 
                             for (int i = 0; i < T.E.size(); ++i)
                             {
@@ -371,9 +387,11 @@ void bitstar()
                             c_best=x->gt;
                             x_goal->gt=c_best;
                             cout<<"I am done with best solution cost = "<<c_best<<endl;
+                            auto finish = std::chrono::high_resolution_clock::now();
+                            cout <<"Time = "<< std::chrono::duration_cast<std::chrono::nanoseconds>(finish-start).count()/1000000 << "ms\n";
                             done++;
-                            if(c_best==2)
-                                done++;
+                            //if(c_best==2)
+                                //done++;
                         }
 
                         vector <edge_queue::iterator> it1;
@@ -406,7 +424,7 @@ void bitstar()
         }
     }
 
-    printf("no_sample_times = %d \n",no_sample_times);
+    /*printf("no_sample_times = %d \n",no_sample_times);
 
     printf("count number %d \n",co);
 
@@ -421,15 +439,16 @@ void bitstar()
     }*/
 
     vector<edge *>sol;
+    vector<vertex *>final;
     edge * current=T.E[T.E.size()-1];
     sol.push_back(current);
 
-    printf("%d \n",(int)T.E.size());
+    /*printf("%d \n",(int)T.E.size());
     for (int i = 0; i < T.E.size(); ++i)
     {
         printf("%f %f",T.E[i]->st->x , T.E[i]->st->y);
         printf(" %f %f\n",T.E[i]->end->x , T.E[i]->end->y);
-    }
+    }*/
 
     bool finish =0;
     while (! finish)
@@ -451,22 +470,28 @@ void bitstar()
 
     printf("%d \n",(int)sol.size()+1);
 
-    printf("%f %f\n",sol[sol.size() -1]->st->x , sol[sol.size() -1]->st->y);
+    printf("%f %f %f\n",sol[sol.size() -1]->st->x , sol[sol.size() -1]->st->y, sol[sol.size() -1]->st->theta);
+
+    final.push_back(sol[sol.size() -1]->st);
 
     for (int i = sol.size() -2 ; i >= 0; --i)
     {
-        printf("%f %f\n",sol[i]->st->x , sol[i]->st->y);
+        printf("%f %f %f\n",sol[i]->st->x , sol[i]->st->y, sol[i]->st->theta);
+        final.push_back(sol[i]->st);
     }
-    printf("%f %f\n",sol[0]->end->x , sol[0]->end->y);
+    printf("%f %f %f\n",sol[0]->end->x , sol[0]->end->y,sol[0]->end->theta);
+    final.push_back(sol[0]->end);
 
-    /*printf("%d \n",0);//(int)T.E.size()
-    for (int i = 0; i < T.E.size(); ++i)
+
+    //printf("%d \n",0);//(int)T.E.size()
+    /*for (int i = 0; i < T.E.size(); ++i)
     {
         printf("%f %f",T.E[i]->st->x , T.E[i]->st->y);
         printf(" %f %f\n",T.E[i]->end->x , T.E[i]->end->y);
     }*/
 
-    //get_path(sol);
+    get_path(final);
+    //printf("%d \n",0);
 
 }
 
@@ -600,10 +625,10 @@ void sample (vector<vertex *> & X_samples,int m, double c_best )
 {
     //cout<<"start sampling \n";
     int count=0;
-    double ran_x,ran_y,ran_theta,x1,x2,y1,y2,max_x,max_y,center_x,center_y,c_min;
+    double ran_x,ran_y,ran_theta;
     vertex * t;
 
-    if(c_best <inf)
+    /*if(c_best <inf)
     {
 
         center_x=(x_start->x + x_goal->x)/2.0;
@@ -620,7 +645,7 @@ void sample (vector<vertex *> & X_samples,int m, double c_best )
 
         //printf("%f %f \n %f %f %f %f \n",max_x,max_y,x1,x2,y1,y2);
 
-    }
+    }*/
 
     while (count< m)
     {
@@ -631,19 +656,20 @@ void sample (vector<vertex *> & X_samples,int m, double c_best )
         if(Map[(int)ran_x][(int)ran_y]==1)
             continue;
 
-        if(c_best < inf)
-        {
-            if (!( ran_x>=x1 && ran_x <=x2 && ran_y >=y1 && ran_y <= y2))
-                continue;
-        }
-
-        count++;
-
         t= new vertex;
 
         t->x=ran_x;
         t->y=ran_y;
         t->theta=ran_theta;
+
+        if(c_best < inf)
+        {
+            if ((h_distance(t,x_start)+ h_distance(t,x_goal)) >= c_best)
+                continue;
+        }
+
+        count++;
+
         t->id=get_id(t);
 
         X_samples.push_back(t);
@@ -781,9 +807,9 @@ bool collision_check_dubin (vertex * v , vertex * x, double & c )
     q1[1]=x->y;
     q1[2]=x->theta;
 
-    dubins_shortest_path(&path, q0, q1, .1);
+    dubins_shortest_path(&path, q0, q1, 50);
 
-    dubins_path_sample_many(&path,  0.01, printConfiguration, NULL);
+    dubins_path_sample_many(&path,0.1, printConfiguration, NULL);
 
     for (int i = 0; i < res.size(); ++i)
     {
@@ -831,34 +857,54 @@ double Best_queue_value (edge_queue & QE)
 }
 
 
-void get_path (vector<edge *> E)
+void get_path (vector<vertex *> v)
 {
     DubinsPath path;
     int count=0;
+    ofstream data;
+    data.open("sol.txt");
 
     double q0[3], q1[3];
-    for (int i = 0; i < E.size(); ++i)
+    for (int i = 0; i < v.size()-1; ++i)
     {
         res.clear();
 
-        q0[0] = E[i]->st->x;
-        q0[1] = E[i]->st->y;
-        q0[2] = E[i]->st->theta;
+        q0[0] = v[i]->x;
+        q0[1] = v[i]->y;
+        q0[2] = v[i]->theta;
 
-        q1[0] = E[i]->end->x;
-        q1[1] = E[i]->end->y;
-        q1[2] = E[i]->end->theta;
+        q1[0] = v[i+1]->x;
+        q1[1] = v[i+1]->y;
+        q1[2] = v[i+1]->theta;
 
-        dubins_shortest_path(&path, q0, q1, .1);
+        dubins_shortest_path(&path, q0, q1, 50);
+        dubins_path_sample_many(&path, 5, printConfiguration, NULL);
+        count+= res.size();
+    }
+    //cout<<count<<endl;
+    for (int i = 0; i < v.size()-1; ++i)
+    {
+        res.clear();
 
-        dubins_path_sample_many(&path, 0.01, printConfiguration, NULL);
+        q0[0] = v[i]->x;
+        q0[1] = v[i]->y;
+        q0[2] = v[i]->theta;
+
+        q1[0] = v[i+1]->x;
+        q1[1] = v[i+1]->y;
+        q1[2] = v[i+1]->theta;
+
+        dubins_shortest_path(&path, q0, q1, 50);
+
+        dubins_path_sample_many(&path, 5, printConfiguration, NULL);
 
         for (int j = 0; j < res.size(); ++j)
         {
-            printf("%f %f \n", res[j][0], res[j][1]);
+            data << to_string(res[j][0])<<" "<<to_string(res[j][1])<<endl;
+            //printf("%f %f \n", res[j][0], res[j][1]);
         }
-        count+= res.size();
     }
+    data.close();
 }
 
 
