@@ -21,7 +21,7 @@
 #define debug
 
 
-#define inf  (DBL_MAX*DBL_MAX)
+#define inf  (DBL_MAX)
 #define pi (22.0/7.0)
 #define ex  boost::math::constants::e<double>()
 
@@ -84,6 +84,11 @@ double Best_queue_value (edge_queue & QE);
 
 void get_path (vector<vertex *> v);
 
+void print_sol(tree T);
+
+void disp (vertex *);
+void disp (edge *);
+
 int main(int argc, char *argv[])
 {
 
@@ -113,15 +118,13 @@ void read_data(string filename)
     char dummy;
     int obsno=0;
 
-    #ifdef debug
-        cin>>sizex;  //4
-        cin>>sizey;  //3
-    #else
-        data>>sizex;  //4
+#ifdef debug
+    cin>>sizex;  //4
+    cin>>sizey;  //3
+#else
+    data>>sizex;  //4
         data>>sizey;  //3
-    #endif
-
-
+#endif
 
     int m=sizex;
     int n=sizey;
@@ -135,16 +138,15 @@ void read_data(string filename)
         for (int j = 0; j < n; ++j)
             Map[i][j]=0;
 
-
     for (int i = 0; i <sizey; ++i)
     {
         for (int j = 0; j < sizex; ++j)
         {
-            #ifdef debug
-                cin>>dummy;
-            #else
-                data>>dummy;
-            #endif
+#ifdef debug
+            cin>>dummy;
+#else
+            data>>dummy;
+#endif
 
             if(dummy=='#')
             {
@@ -163,14 +165,14 @@ void read_data(string filename)
             }*/
         }
     }
-    #ifdef debug
-        cin>>st_x>>st_y;
-        cin>>goal_x>>goal_y;
-        goal_theta=0;
-        st_theta=0;
-    #else
-        data>>st_x>>st_y;st_theta=0;data>>goal_x>>goal_y; goal_theta=0;
-    #endif
+#ifdef debug
+    cin>>st_x>>st_y;
+    cin>>goal_x>>goal_y;
+    goal_theta=0;
+    st_theta=0;
+#else
+    data>>st_x>>st_y;st_theta=0;data>>goal_x>>goal_y; goal_theta=0;
+#endif
 
     data.close();
 
@@ -188,19 +190,16 @@ void read_data(string filename)
 
 }
 
-
 void bitstar()
 {
     auto start = std::chrono::high_resolution_clock::now();
-    //cout<<st_x <<" "<<st_y<<endl;
-    //cout<<goal_x <<" "<<goal_y<<endl;
 
     vertex_queue QV ;
     edge_queue QE ;
 
     vector<vertex *> X_samples;
 
-    int knn, no_sample_times=0;
+    int knn;
 
     x_start = new vertex;
     x_goal = new vertex;
@@ -247,28 +246,33 @@ void bitstar()
     QV.clear();
     QE.clear();
 
+    disp(x_start);
+    disp(x_goal);
+
 ///********************************* done initialization ********************************************************\\\
 ///
 
-    int co=0;
-    while (done <n)
+    int co=0,sample_no=0;
+
+    while (done <n &&  sample_no < 50)
     {
         co++;
         if ( QV.empty() && QE.empty() )
         {
+            sample_no++;
+
             //cout<<"Vertex size =  "<<T.V.size()<<endl;
             //cout<<"edge size =  "<<T.E.size()<<endl;
             //cout<<"sample size =  "<<X_samples.size()<<endl;
 
-            if(done >0)
-                prune(c_best,X_samples,T);
+            prune(c_best,X_samples,T);
 
             //cout<<"Vertex size =  "<<T.V.size()<<endl;
             //cout<<"edge size =  "<<T.E.size()<<endl;
             //cout<<"sample size =  "<<X_samples.size()<<endl;
 
             sample (X_samples,100,c_best);
-            no_sample_times ++;
+
 
             for (int i = 0; i < T.V.size(); ++i)
             {
@@ -391,7 +395,7 @@ void bitstar()
                             cout <<"Time = "<< std::chrono::duration_cast<std::chrono::nanoseconds>(finish-start).count()/1000000 << "ms\n";
                             done++;
                             //if(c_best==2)
-                                //done++;
+                            //done++;
                         }
 
                         vector <edge_queue::iterator> it1;
@@ -419,24 +423,33 @@ void bitstar()
         {
             QE.clear();
             QV.clear();
-            //done++;
-            //cout<<"all are empty \n";
+        }
+        auto finish = std::chrono::high_resolution_clock::now();
+        if (chrono::duration_cast <chrono::nanoseconds>(finish-start).count()/1000000000> 30 )
+        {
+            cout<<"time is done \n";
+            return;
         }
     }
+    print_sol(T);
+    cout<<"number of solutions = "<<done<<endl;
+}
 
-    /*printf("no_sample_times = %d \n",no_sample_times);
+void print_sol(tree T)
+{
+    /*printf("no_sample_times = %d \n",sample_no);
 
-    printf("count number %d \n",co);
+   printf("count number %d \n",co);
 
-    printf("Vertex tree count %d \n",(int)T.V.size());
+   printf("Vertex tree count %d \n",(int)T.V.size());
 
-    printf("Edge tree count %d \n",(int)T.E.size());
+   printf("Edge tree count %d \n",(int)T.E.size());
 
-    /*printf("%d \n",(int)T.V.size());
-    for (int i = 0; i < T.V.size(); ++i)
-    {
-        printf("%f %f\n",T.V[i]->x , T.V[i]->y);
-    }*/
+   /*printf("%d \n",(int)T.V.size());
+   for (int i = 0; i < T.V.size(); ++i)
+   {
+       printf("%f %f\n",T.V[i]->x , T.V[i]->y);
+   }*/
 
     vector<edge *>sol;
     vector<vertex *>final;
@@ -492,19 +505,20 @@ void bitstar()
 
     get_path(final);
     //printf("%d \n",0);
-
 }
 
 
 double h_distance (vertex * v1, vertex * v2)
 {
-    return sqrt( (v1->x - v2->x) * (v1->x - v2->x) + (v1->y - v2->y) * (v1->y - v2->y)   );
+    return sqrt( (v1->x - v2->x) * (v1->x - v2->x) + (v1->y - v2->y) * (v1->y - v2->y) + (v1->theta - v2->theta) * (v1->theta - v2->theta)   );
 }
+
 
 void prune (double c_best,vector<vertex *> & X_samples ,tree & T )
 {
     vector<vector<vertex *>::iterator> itv;
     vector<vector<edge *>::iterator> ite, ite1;
+    vector<vertex *>del;
 
 
     for (int i = 0; i < X_samples.size(); ++i)
@@ -525,51 +539,32 @@ void prune (double c_best,vector<vertex *> & X_samples ,tree & T )
 
     itv.clear();
 
-    for (int i = 0; i < T.V.size(); ++i)
+    for (int i = 0; i < T.E.size(); ++i)
     {
-        if ((T.V[i]->ghat + T.V[i]->h) > c_best || T.V[i]->gt + T.V[i]->h  > c_best )
+        if ( T.E[i]->st->ghat + T.E[i]->st->h > c_best )
         {
-            //cout<<"somthing need to be erased from vertex \n";
+            ite.push_back(T.E.begin() + i);
 
-            V_rtree.remove(point(T.V[i]->x, T.V[i]->y, T.V[i]->theta));
-
-            V_table.erase(T.V[i]->id);
-
-            itv.push_back(T.V.begin()+i);
-        }
-    }
-
-    for (int i = 0; i < itv.size(); ++i)
-    {
-        for (int j = 0; j < T.E.size(); ++j)
-        {
-            if((*itv[i])->id == T.E[j]->end->id)
+            if(T.E[i]->end->ghat + T.E[i]->end->h <= c_best)
             {
-                ite.push_back(T.E.begin()+j);
+                X_samples_rtree.insert(point(T.E[i]->end->x, T.E[i]->end->y, T.E[i]->end->theta));
+                X_samples.push_back(T.E[i]->end);
+                del.push_back(T.E[i]->end);
+            }
+        }
+
+        if ( T.E[i]->end->ghat + T.E[i]->end->h > c_best )
+        {
+            ite.push_back(T.E.begin() + i);
+
+            if(T.E[i]->st->ghat + T.E[i]->st->h <= c_best)
+            {
+                X_samples_rtree.insert(point(T.E[i]->st->x, T.E[i]->st->y, T.E[i]->st->theta));
+                X_samples.push_back(T.E[i]->st);
+                del.push_back(T.E[i]->st);
             }
         }
     }
-
-
-    for (int j = itv.size()-1; j >=0; --j)
-    {
-        T.V.erase(itv[j]);
-    }
-
-    auto sz=ite.size();
-
-    for (int k = 0; k <sz ; ++k)
-    {
-        for (int i = 0; i < T.E.size(); ++i)
-        {
-            if ((*ite[k])->st->id == T.E[i]->st->id && (*ite[k])->id != T.E[i]->id )
-            {
-                ite.push_back(T.E.begin() + i);
-            }
-        }
-    }
-
-    sort(ite.begin(),ite.end());
 
     for (int j = ite.size()-1; j >=0; --j)
     {
@@ -581,7 +576,48 @@ void prune (double c_best,vector<vertex *> & X_samples ,tree & T )
         T.E.erase(ite[j]);
     }
 
+    for (int i = 0; i < T.V.size(); ++i)
+    {
+        if ((T.V[i]->ghat + T.V[i]->h) > c_best )
+        {
+            //cout<<"somthing need to be erased from vertex \n";
+
+            V_rtree.remove(point(T.V[i]->x, T.V[i]->y, T.V[i]->theta));
+
+            V_table.erase(T.V[i]->id);
+
+            itv.push_back(T.V.begin()+i);
+        }
+    }
+
+    for (int k = 0; k < del.size(); ++k)
+    {
+        for (int i = 0; i < T.V.size(); ++i)
+        {
+            if(T.V[i]->id == del[k]->id)
+            {
+                //cout<<"match\n";
+                V_rtree.remove(point(T.V[i]->x, T.V[i]->y, T.V[i]->theta));
+
+                V_table.erase(T.V[i]->id);
+
+                itv.push_back(T.V.begin()+i);
+            }
+        }
+    }
+    sort(itv.begin(),itv.end());
+
+    for (int j = itv.size()-1; j >=0; --j)
+    {
+        if(j>0)
+            if((*itv[j]) == (*itv[j-1]))
+                continue;
+
+        T.V.erase(itv[j]);
+    }
+
 }
+
 
 lint get_id (vertex * v)
 {
@@ -596,6 +632,7 @@ lint get_id (vertex * v)
     return key;
 
 }
+
 
 lint get_id (vertex * st  , vertex * end)
 {
@@ -621,31 +658,13 @@ lint get_id (vertex * st  , vertex * end)
 
 }
 
+
 void sample (vector<vertex *> & X_samples,int m, double c_best )
 {
     //cout<<"start sampling \n";
     int count=0;
     double ran_x,ran_y,ran_theta;
     vertex * t;
-
-    /*if(c_best <inf)
-    {
-
-        center_x=(x_start->x + x_goal->x)/2.0;
-        center_y=(x_start->y + x_goal->y)/2.0;
-        c_min=h_distance(x_start,x_goal);
-        max_x=c_best;
-        max_y=sqrt(max_x*max_x - c_min*c_min);
-
-        x1=center_x-max_x/2.0;
-        x2=center_x+max_x/2.0;
-
-        y1=center_y-max_y/2.0;
-        y2=center_y+max_y/2.0;
-
-        //printf("%f %f \n %f %f %f %f \n",max_x,max_y,x1,x2,y1,y2);
-
-    }*/
 
     while (count< m)
     {
@@ -675,9 +694,9 @@ void sample (vector<vertex *> & X_samples,int m, double c_best )
         X_samples.push_back(t);
         X_samples_rtree.insert(point(t->x,t->y,t->theta));
 
-        //printf("%f %f \n",t->x,t->y);
+        //printf("%f %f %f %lu\n",t->x,t->y,t->theta,t->id);
     }
-
+    //cout<<"done sampling \n";
 }
 
 
@@ -699,7 +718,6 @@ void Expand_Vertex(vertex * v , vertex_queue & QV , edge_queue & QE , int knn ,d
 
     //printf("X_near size = %d \n",X_near.size());
 
-
     for (int i = 0; i < X_near.size(); ++i)
     {
         x=new vertex;
@@ -711,6 +729,12 @@ void Expand_Vertex(vertex * v , vertex_queue & QV , edge_queue & QE , int knn ,d
         x->gt =(inf);
         x->ghat=h_distance(x,x_start);
         x->id=get_id(x);
+
+        if(v->id == x->id)
+        {
+            //cout<<"repeted \n";
+            continue;
+        }
 
         if ( (v->ghat + h_distance(v,x) + x->h) < c_best )
         {
@@ -744,6 +768,12 @@ void Expand_Vertex(vertex * v , vertex_queue & QV , edge_queue & QE , int knn ,d
             w->ghat=h_distance(w,x_start);
             w->h=h_distance(w,x_goal);
             w->id=get_id(w);
+
+            if(v->id == w->id)
+            {
+                //cout<<"repeted \n";
+                continue;
+            }
 
             for (int j = 0; j < T.V.size(); ++j)
             {
@@ -807,9 +837,9 @@ bool collision_check_dubin (vertex * v , vertex * x, double & c )
     q1[1]=x->y;
     q1[2]=x->theta;
 
-    dubins_shortest_path(&path, q0, q1, 50);
+    dubins_shortest_path(&path, q0, q1, .1);
 
-    dubins_path_sample_many(&path,0.1, printConfiguration, NULL);
+    dubins_path_sample_many(&path,0.05, printConfiguration, NULL);
 
     for (int i = 0; i < res.size(); ++i)
     {
@@ -838,7 +868,7 @@ bool collision_check_dubin (vertex * v , vertex * x, double & c )
 double Best_queue_value (vertex_queue & QV)
 {
     if(QV.empty())
-        return inf;
+        return inf* inf ;
 
     auto top = QV[0];
     return top->gt + top->h;
@@ -877,8 +907,8 @@ void get_path (vector<vertex *> v)
         q1[1] = v[i+1]->y;
         q1[2] = v[i+1]->theta;
 
-        dubins_shortest_path(&path, q0, q1, 50);
-        dubins_path_sample_many(&path, 5, printConfiguration, NULL);
+        dubins_shortest_path(&path, q0, q1, .1);
+        dubins_path_sample_many(&path, 0.1, printConfiguration, NULL);
         count+= res.size();
     }
     //cout<<count<<endl;
@@ -894,9 +924,9 @@ void get_path (vector<vertex *> v)
         q1[1] = v[i+1]->y;
         q1[2] = v[i+1]->theta;
 
-        dubins_shortest_path(&path, q0, q1, 50);
+        dubins_shortest_path(&path, q0, q1, .1);
 
-        dubins_path_sample_many(&path, 5, printConfiguration, NULL);
+        dubins_path_sample_many(&path, .1, printConfiguration, NULL);
 
         for (int j = 0; j < res.size(); ++j)
         {
@@ -908,6 +938,15 @@ void get_path (vector<vertex *> v)
 }
 
 
+void disp(vertex* v )
+{
+    printf("x= %f , y= %f , theta = %f , id = %lu\n",v->x,v->y,v->theta,v->id);
+}
 
 
-
+void disp(edge* e )
+{
+    disp(e->st);
+    disp(e->end);
+    printf("id= %lu\n",e->id);
+}
