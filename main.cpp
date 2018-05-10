@@ -545,7 +545,7 @@ void prune (double c_best,vector<vertex *> & X_samples ,tree & T )
         {
             ite.push_back(T.E.begin() + i);
 
-            if(T.E[i]->end->ghat + T.E[i]->end->h <= c_best)
+            //if(T.E[i]->end->ghat + T.E[i]->end->h <= c_best)
             {
                 X_samples_rtree.insert(point(T.E[i]->end->x, T.E[i]->end->y, T.E[i]->end->theta));
                 X_samples.push_back(T.E[i]->end);
@@ -553,16 +553,9 @@ void prune (double c_best,vector<vertex *> & X_samples ,tree & T )
             }
         }
 
-        if ( T.E[i]->end->ghat + T.E[i]->end->h > c_best )
+        else if ( T.E[i]->end->ghat + T.E[i]->end->h > c_best )
         {
             ite.push_back(T.E.begin() + i);
-
-            if(T.E[i]->st->ghat + T.E[i]->st->h <= c_best)
-            {
-                X_samples_rtree.insert(point(T.E[i]->st->x, T.E[i]->st->y, T.E[i]->st->theta));
-                X_samples.push_back(T.E[i]->st);
-                del.push_back(T.E[i]->st);
-            }
         }
     }
 
@@ -837,7 +830,7 @@ bool collision_check_dubin (vertex * v , vertex * x, double & c )
     q1[1]=x->y;
     q1[2]=x->theta;
 
-    dubins_shortest_path(&path, q0, q1, .1);
+    dubins_shortest_path(&path, q0, q1, 50);
 
     dubins_path_sample_many(&path,0.05, printConfiguration, NULL);
 
@@ -907,7 +900,7 @@ void get_path (vector<vertex *> v)
         q1[1] = v[i+1]->y;
         q1[2] = v[i+1]->theta;
 
-        dubins_shortest_path(&path, q0, q1, .1);
+        dubins_shortest_path(&path, q0, q1, 50);
         dubins_path_sample_many(&path, 0.1, printConfiguration, NULL);
         count+= res.size();
     }
@@ -924,7 +917,7 @@ void get_path (vector<vertex *> v)
         q1[1] = v[i+1]->y;
         q1[2] = v[i+1]->theta;
 
-        dubins_shortest_path(&path, q0, q1, .1);
+        dubins_shortest_path(&path, q0, q1, 50);
 
         dubins_path_sample_many(&path, .1, printConfiguration, NULL);
 
