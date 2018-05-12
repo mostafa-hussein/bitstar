@@ -45,6 +45,7 @@ double st_x,st_y,st_theta,goal_x,goal_y,goal_theta;
 vertex * x_start ,*  x_goal;
 vector<double*> res;
 int n=1;
+double min_r=0.1;
 
 
 unordered_map<lint , edge * > E_table;
@@ -98,6 +99,11 @@ int main(int argc, char *argv[])
     {
         filename = argv[1];
         n=stoi(argv[1]);
+    }
+
+    if(argc >2)
+    {
+        min_r=stod(argv[2]);
     }
 
 
@@ -271,7 +277,7 @@ void bitstar()
             //cout<<"edge size =  "<<T.E.size()<<endl;
             //cout<<"sample size =  "<<X_samples.size()<<endl;
 
-            sample (X_samples,100,c_best);
+            sample (X_samples,10,c_best);
 
 
             for (int i = 0; i < T.V.size(); ++i)
@@ -453,7 +459,16 @@ void print_sol(tree T)
 
     vector<edge *>sol;
     vector<vertex *>final;
-    edge * current=T.E[T.E.size()-1];
+    edge * current;
+
+    for (auto j = T.E.size()-1; j >=0 ; --j)
+    {
+        if(T.E[j]->end->id == x_goal->id)
+        {
+            current=T.E[j];
+            break;
+        }
+    }
     sol.push_back(current);
 
     /*printf("%d \n",(int)T.E.size());
@@ -830,9 +845,9 @@ bool collision_check_dubin (vertex * v , vertex * x, double & c )
     q1[1]=x->y;
     q1[2]=x->theta;
 
-    dubins_shortest_path(&path, q0, q1, 50);
+    dubins_shortest_path(&path, q0, q1, min_r);
 
-    dubins_path_sample_many(&path,0.05, printConfiguration, NULL);
+    dubins_path_sample_many(&path,0.1, printConfiguration, NULL);
 
     for (int i = 0; i < res.size(); ++i)
     {
@@ -900,11 +915,11 @@ void get_path (vector<vertex *> v)
         q1[1] = v[i+1]->y;
         q1[2] = v[i+1]->theta;
 
-        dubins_shortest_path(&path, q0, q1, 50);
+        dubins_shortest_path(&path, q0, q1, min_r);
         dubins_path_sample_many(&path, 0.1, printConfiguration, NULL);
         count+= res.size();
     }
-    //cout<<count<<endl;
+    data<<count<<endl;
     for (int i = 0; i < v.size()-1; ++i)
     {
         res.clear();
@@ -917,9 +932,9 @@ void get_path (vector<vertex *> v)
         q1[1] = v[i+1]->y;
         q1[2] = v[i+1]->theta;
 
-        dubins_shortest_path(&path, q0, q1, 50);
+        dubins_shortest_path(&path, q0, q1, min_r);
 
-        dubins_path_sample_many(&path, .1, printConfiguration, NULL);
+        dubins_path_sample_many(&path, 0.1, printConfiguration, NULL);
 
         for (int j = 0; j < res.size(); ++j)
         {
@@ -927,6 +942,7 @@ void get_path (vector<vertex *> v)
             //printf("%f %f \n", res[j][0], res[j][1]);
         }
     }
+    data<<"0\n";
     data.close();
 }
 
