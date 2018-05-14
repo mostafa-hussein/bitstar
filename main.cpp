@@ -18,6 +18,8 @@
 #include "dubins.h"
 #include "dubins.cpp"
 #include <algorithm>
+#include <fcntl.h>
+
 #define debug
 
 
@@ -58,6 +60,9 @@ bgi::rtree< point, bgi::quadratic<16> > V_rtree;
 
 bgi::rtree< point, bgi::quadratic<16>> X_samples_rtree;
 
+std::ofstream out;
+
+
 
 void read_data(string filename);
 
@@ -88,7 +93,10 @@ void get_path (vector<vertex *> v);
 void print_sol(tree T);
 
 void disp (vertex *);
+
 void disp (edge *);
+
+
 
 int main(int argc, char *argv[])
 {
@@ -106,12 +114,13 @@ int main(int argc, char *argv[])
         min_r=stod(argv[2]);
     }
 
-
     read_data(filename);
 
     //cout<<"done reading \n";
 
     bitstar();
+
+
 
     return 0;
 }
@@ -260,7 +269,7 @@ void bitstar()
 
     int co=0,sample_no=0;
 
-    while (done <n &&  sample_no < 50)
+    while (done <n &&  sample_no <100000)
     {
         co++;
         if ( QV.empty() && QE.empty() )
@@ -400,6 +409,14 @@ void bitstar()
                             auto finish = std::chrono::high_resolution_clock::now();
                             cout <<"Time = "<< std::chrono::duration_cast<std::chrono::nanoseconds>(finish-start).count()/1000000 << "ms\n";
                             done++;
+                            string file="sol.txt";
+
+                            out.open(file+to_string(done));
+
+                            print_sol(T);
+
+                            out.close();
+
                             //if(c_best==2)
                             //done++;
                         }
@@ -437,7 +454,7 @@ void bitstar()
             return;
         }
     }
-    print_sol(T);
+    //print_sol(T);
     cout<<"number of solutions = "<<done<<endl;
 }
 
@@ -899,8 +916,8 @@ void get_path (vector<vertex *> v)
 {
     DubinsPath path;
     int count=0;
-    ofstream data;
-    data.open("sol.txt");
+
+
 
     double q0[3], q1[3];
     for (int i = 0; i < v.size()-1; ++i)
@@ -919,7 +936,7 @@ void get_path (vector<vertex *> v)
         dubins_path_sample_many(&path, 0.1, printConfiguration, NULL);
         count+= res.size();
     }
-    data<<count<<endl;
+    out<<count<<endl;
     for (int i = 0; i < v.size()-1; ++i)
     {
         res.clear();
@@ -938,12 +955,12 @@ void get_path (vector<vertex *> v)
 
         for (int j = 0; j < res.size(); ++j)
         {
-            data << to_string(res[j][0])<<" "<<to_string(res[j][1])<<endl;
+            out << to_string(res[j][0])<<" "<<to_string(res[j][1])<<endl;
             //printf("%f %f \n", res[j][0], res[j][1]);
         }
     }
-    data<<"0\n";
-    data.close();
+    out<<"0\n";
+    //data.close();
 }
 
 
