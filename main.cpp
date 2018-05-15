@@ -286,7 +286,7 @@ void bitstar()
             //cout<<"edge size =  "<<T.E.size()<<endl;
             //cout<<"sample size =  "<<X_samples.size()<<endl;
 
-            sample (X_samples,10,c_best);
+            sample (X_samples,100,c_best);
 
 
             for (int i = 0; i < T.V.size(); ++i)
@@ -448,7 +448,7 @@ void bitstar()
             QV.clear();
         }
         auto finish = std::chrono::high_resolution_clock::now();
-        if (chrono::duration_cast <chrono::nanoseconds>(finish-start).count()/1000000000> 30 )
+        if (chrono::duration_cast <chrono::nanoseconds>(finish-start).count()/1000000000> 60 )
         {
             cout<<"time is done \n";
             return;

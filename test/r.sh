@@ -1,0 +1,21 @@
+#!/bin/sh
+./bitstar 10 50 <map.sw  >10.in
+./bitstar 10 50 <map.sw  >11.in
+./bitstar 10 50 <map.sw  >12.in
+./bitstar 10 50 <map.sw  >13.in
+./bitstar 10 50 <map.sw  >14.in
+./bitstar 10 50 <map.sw  >15.in
+./bitstar 10 50 <map.sw  >16.in
+./bitstar 10 50 <map.sw  >17.in
+./bitstar 10 50 <map.sw  >18.in
+./bitstar 10 50 <map.sw  >19.in
+./bitstar 10 50 <map.sw  >1.in
+./bitstar 10 50 <map.sw  >20.in
+./bitstar 10 50 <map.sw  >2.in
+./bitstar 10 50 <map.sw  >3.in
+./bitstar 10 50 <map.sw  >4.in
+./bitstar 10 50 <map.sw  >5.in
+./bitstar 10 50 <map.sw  >6.in
+./bitstar 10 50 <map.sw  >7.in
+./bitstar 10 50 <map.sw  >8.in
+./bitstar 10 50 <map.sw  >9.in
